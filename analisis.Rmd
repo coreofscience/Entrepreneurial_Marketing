@@ -1,0 +1,94 @@
+---
+title: "Análisis de la Producción"
+output: 
+  html_document:
+            toc: TRUE
+            toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+#Librerias
+library(DT)
+library(visNetwork)
+library(ggraph)
+library(plotly)
+library(readr)
+```
+
+```{r}
+info <- 
+  read_csv("Workshop.csv")
+
+graph_tbl <- 
+  info |> 
+  expand(from = Source, to = Target) |> 
+  filter(from != to) |> 
+  ungroup() |> 
+  graph_from_data_frame(directed = FALSE) |> 
+  as_tbl_graph() |> 
+  convert(to_simple)
+```
+
+## Vista red grafos
+
+```{r}
+nodes <- 
+  graph_tbl |> 
+  activate(nodes) |>
+  # modularidad
+  mutate(community=as.character(group_louvain())) |>
+  #grado
+  mutate(degree = centrality_degree()) |>
+  data.frame() |> 
+  select(name, community, degree) 
+
+edges <- 
+  graph_tbl |> 
+  activate(edges) |> 
+  data.frame() |> 
+  select(from, to)
+
+visNetwork(nodes = nodes, 
+           edges = edges, 
+           height = "500px") |> 
+  visOptions(highlightNearest = TRUE, selectedBy = "name" ) 
+
+# importación
+# graph_from_data_frame(d = edges, 
+#                       directed = FALSE, 
+#                       vertices = nodes) |>
+#   write_graph("academic_social_network_universidades.graphml",
+#               "graphml")
+```
+
+## Datos tabla
+
+```{r}
+graph_tbl|> 
+  activate(nodes) |>
+  mutate(community=as.character(group_louvain())) |>
+  #grado
+  mutate(degree = centrality_degree()) |>
+  data.frame() |> 
+  select("Nombre" = name,
+         "Grado" = degree,
+         "Comunidad" = community) |>
+  DT::datatable(class = "cell-border stripe", 
+                rownames = F, 
+                filter = "top", 
+                editable = FALSE, 
+                extensions = "Buttons", 
+                options = list(dom = "Bfrtip",
+                               buttons = c("copy",
+                                           "csv",
+                                           "excel", 
+                                           "pdf", 
+                                           "print")))
+```
+
