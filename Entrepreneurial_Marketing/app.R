@@ -6,6 +6,9 @@ library(visNetwork)
 library(ggraph)
 library(plotly)
 library(datasets)
+library(tidyverse)
+library(tidymodels)
+library(tidygraph)
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
@@ -59,22 +62,19 @@ server <- function(input, output) {
     
     df <- read.csv(input$upload$datapath, header = TRUE, sep = ",")
     
-    # graph_tbl <- 
-    #   df |> 
-    #   expand(from = Source, to = Target) |> 
-    #   filter(from != to) |> 
-    #   ungroup() |> 
-    #   graph_from_data_frame(directed = FALSE) |> 
-    #   as_tbl_graph() |> 
-    #   convert(to_simple)
-    # 
-    # return(graph_tbl) 
+    graph_tbl <-
+      df |>
+      expand(from = Source, to = Target) |>
+      filter(from != to) |>
+      ungroup() |>
+      graph_from_data_frame(directed = FALSE) |>
+      as_tbl_graph() |>
+      convert(to_simple)
+    
+    return(graph_tbl)
   })
   
-  output$graf <- renderVisNetwork ({
-    
-    graph_tb <- exportar()
-    graph_tbl <- as.data.frame(graph_tb)
+  grafos <- function(graph_tbl) {
     nodes <- 
       graph_tbl |> 
       activate(nodes) |>
@@ -83,6 +83,7 @@ server <- function(input, output) {
       #grado
       mutate(degree = centrality_degree()) |>
       data.frame() |> 
+      mutate(community = as.numeric(community) + 16) |> 
       select(name, community, degree) 
     
     edges <- 
@@ -91,41 +92,64 @@ server <- function(input, output) {
       data.frame() |> 
       select(from, to)
     
-    visNetwork(nodes = nodes, 
-               edges = edges, 
-               height = "500px") |> 
-      visOptions(highlightNearest = TRUE, selectedBy = "name" ) 
+    return(list(nodes=nodes, edges=edges))
+  }
+  
+  output$graf <- renderVisNetwork ({
+    
+    graph_tb <- exportar()
+    
+    grafo1 <- grafos(graph_tb)
+    
+    
+    visNetwork(nodes = grafo1$nodes, 
+               edges = grafo1$edges, 
+               height = "500px")  |> 
+      visExport() |> 
+      visOptions(manipulation = list(enabled = TRUE, 
+                                     editEdgeCols = c("label"), 
+                                     editNodeCols = c("group"), 
+                                     addNodeCols = c("id", "label"))) |> 
+      visNodes(color = grafo1$nodes$community, size = grafo1$edges$degree)
   })
   
   output$contents <-  DT::renderDataTable(server = FALSE,{
     
     graph_tb <- exportar() 
-    m <- as.data.frame(graph_tb) |> 
-      DT::datatable()
-    # graph <-as.data.frame(graph_tb) |>  
-    #   activate(nodes) |>
-    #   mutate(community=as.character(group_louvain())) |>
-    #   #grado
-    #   mutate(degree = centrality_degree()) |>
-    #   data.frame() |> 
-    #   select("Nombre" = name,
-    #          "Grado" = degree,
-    #          "Comunidad" = community) |>
-    #   DT::datatable(class = "cell-border stripe", 
-    #                 rownames = F, 
-    #                 filter = "top", 
-    #                 editable = FALSE, 
-    #                 extensions = "Buttons", 
-    #                 options = list(dom = "Bfrtip",
-    #                                buttons = c("copy",
-    #                                            "csv",
-    #                                            "excel", 
-    #                                            "pdf", 
-    #                                            "print")))
+    
+    graph <- graph_tb |>
+      activate(nodes) |>
+      mutate(community=as.character(group_louvain())) |>
+      #grado
+      mutate(degree = centrality_degree()) |>
+      data.frame() |>
+      select("Nombre" = name,
+             "Grado" = degree,
+             "Comunidad" = community) |>
+      DT::datatable(class = "cell-border stripe",
+                    rownames = F,
+                    filter = "top",
+                    editable = FALSE,
+                    extensions = "Buttons",
+                    options = list(dom = "Bfrtip",
+                                   buttons = c("copy",
+                                               "csv",
+                                               "excel",
+                                               "pdf",
+                                               "print")))
   })
   
   output$download <- downloadHandler(
     
+    graph_tb <- exportar(),
+    
+    grafo1 <- grafos(graph_tb),
+    
+    descarga <- graph_from_data_frame(d = grafo1$edges,
+                                      directed = FALSE,
+                                      vertices = grafo1$nodes) |>
+      write_graph("academic_social_network_universidades.graphml",
+                  "graphml")
   )
   
 }

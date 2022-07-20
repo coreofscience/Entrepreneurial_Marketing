@@ -19,11 +19,15 @@ library(visNetwork)
 library(ggraph)
 library(plotly)
 library(readr)
+library(tidyverse)
+library(tidymodels)
+library(tidygraph)
+library(here)
 ```
 
 ```{r}
 info <- 
-  read_csv("Workshop.csv")
+  read_csv(here("data", "Workshop.csv"))
 
 graph_tbl <- 
   info |> 
@@ -45,7 +49,7 @@ nodes <-
   mutate(community=as.character(group_louvain())) |>
   #grado
   mutate(degree = centrality_degree()) |>
-  data.frame() |> 
+  data.frame() |>  
   select(name, community, degree) 
 
 edges <- 
@@ -54,17 +58,27 @@ edges <-
   data.frame() |> 
   select(from, to)
 
+colores <- c["red", "blue", "green"]
+
 visNetwork(nodes = nodes, 
            edges = edges, 
-           height = "500px") |> 
-  visOptions(highlightNearest = TRUE, selectedBy = "name" ) 
+           width = "100%") |> 
+  visExport() |> 
+  visLegend() |> 
+  visOptions(manipulation = list(enabled = TRUE, 
+                                 editEdgeCols = c("label"), 
+                                 editNodeCols = c("group"), 
+                                 addNodeCols = c("id", "label"))) |> 
+  visNodes(color = "red", size = nodes$degree)
+```
 
+```{r}
 # importación
-# graph_from_data_frame(d = edges, 
-#                       directed = FALSE, 
-#                       vertices = nodes) |>
-#   write_graph("academic_social_network_universidades.graphml",
-#               "graphml")
+imagen <- graph_from_data_frame(d = edges,
+                      directed = FALSE,
+                      vertices = nodes) |>
+  write_graph("academic_social_network_universidades.graphml",
+              "graphml")
 ```
 
 ## Datos tabla
