@@ -106,6 +106,8 @@ server <- function(input, output) {
                edges = grafo1$edges, 
                height = "500px")  |> 
       visExport() |> 
+      visEdges(arrows = "to") |>
+      visLegend() |> 
       visOptions(manipulation = list(enabled = TRUE, 
                                      editEdgeCols = c("label"), 
                                      editNodeCols = c("group"), 

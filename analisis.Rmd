@@ -23,9 +23,10 @@ library(tidyverse)
 library(tidymodels)
 library(tidygraph)
 library(here)
+library(igraph)
 ```
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
 info <- 
   read_csv(here("data", "Workshop.csv"))
 
@@ -41,7 +42,7 @@ graph_tbl <-
 
 ## Vista red grafos
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
 nodes <- 
   graph_tbl |> 
   activate(nodes) |>
@@ -58,32 +59,37 @@ edges <-
   data.frame() |> 
   select(from, to)
 
-colores <- c["red", "blue", "green"]
-
 visNetwork(nodes = nodes, 
            edges = edges, 
            width = "100%") |> 
   visExport() |> 
+  visEdges(arrows = "to") |>
   visLegend() |> 
   visOptions(manipulation = list(enabled = TRUE, 
                                  editEdgeCols = c("label"), 
                                  editNodeCols = c("group"), 
-                                 addNodeCols = c("id", "label"))) |> 
-  visNodes(color = "red", size = nodes$degree)
+                                 addNodeCols = c("id", "label")))
+# |>
+#   for(i in nodes_u$community)
+#   {
+#     visGroups(groupname = i, color = "red")
+#   }
+
+#  visNodes(color = "red", size = nodes$degree)
 ```
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
 # importación
-imagen <- graph_from_data_frame(d = edges,
-                      directed = FALSE,
-                      vertices = nodes) |>
-  write_graph("academic_social_network_universidades.graphml",
-              "graphml")
+# imagen <- graph_from_data_frame(d = edges,
+#                       directed = FALSE,
+#                       vertices = nodes) |>
+#   write_graph("academic_social_network_universidades.graphml",
+#               "graphml")
 ```
 
 ## Datos tabla
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
 graph_tbl|> 
   activate(nodes) |>
   mutate(community=as.character(group_louvain())) |>
