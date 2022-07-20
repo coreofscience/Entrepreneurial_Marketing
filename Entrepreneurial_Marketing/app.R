@@ -9,8 +9,7 @@ library(datasets)
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
-    menuItem("Importar datos", tabName = "importar_datos", icon = icon("upload")),
-    
+    fileInput("upload", "Choose csv", accept = c(".csv")),
     menuItem("Figura", tabName = "fig", icon = icon("table")),
     
     menuItem("Tabla", icon = icon("book"), tabName = ("tabla")),
@@ -21,20 +20,17 @@ sidebar <- dashboardSidebar(
 
 setup <- dashboardBody(
   tabItems(
-    tabItem(tabName = "importar_datos",
-            fluidPage(br(), h2("Importar"), fileInput("upload", "Choose csv", accept = c(".csv"), width = '500px'))
-    ),
     tabItem(tabName = "fig",
-            fluidPage(plotlyOutput("graf"))
+            fluidPage(visNetworkOutput("graf"))
     ),
     tabItem(tabName = "tabla",
-            tableOutput("contents")
+            DT::dataTableOutput("contents")
     )
   )
 )
 
 ui <- dashboardPage(
-  skin = "red",
+  skin = "green",
   dashboardHeader(title = "Red social",
                   dropdownMenu(type = "notifications", icon = shiny::icon("code"),
                                badgeStatus = "info", headerText = "Desarrolladores",
@@ -59,26 +55,26 @@ server <- function(input, output) {
   
   exportar <- reactive({
     
-    req(input$file)
+    req(input$upload)
     
-    df <- read.csv(input$file$datapath, header = TRUE, sep = ",")
+    df <- read.csv(input$upload$datapath, header = TRUE, sep = ",")
     
-    graph_tbl <- 
-      df |> 
-      expand(from = Source, to = Target) |> 
-      filter(from != to) |> 
-      ungroup() |> 
-      graph_from_data_frame(directed = FALSE) |> 
-      as_tbl_graph() |> 
-      convert(to_simple)
-    
-    return(graph_tbl) 
+    # graph_tbl <- 
+    #   df |> 
+    #   expand(from = Source, to = Target) |> 
+    #   filter(from != to) |> 
+    #   ungroup() |> 
+    #   graph_from_data_frame(directed = FALSE) |> 
+    #   as_tbl_graph() |> 
+    #   convert(to_simple)
+    # 
+    # return(graph_tbl) 
   })
   
-  output$graf <- renderPlotly ({
+  output$graf <- renderVisNetwork ({
     
     graph_tb <- exportar()
-    
+    graph_tbl <- as.data.frame(graph_tb)
     nodes <- 
       graph_tbl |> 
       activate(nodes) |>
@@ -101,29 +97,32 @@ server <- function(input, output) {
       visOptions(highlightNearest = TRUE, selectedBy = "name" ) 
   })
   
-  output$contents <- renderTable(
+  output$contents <-  DT::renderDataTable(server = FALSE,{
     
-    graph_tb <- exportar() |>  
-      activate(nodes) |>
-      mutate(community=as.character(group_louvain())) |>
-      #grado
-      mutate(degree = centrality_degree()) |>
-      data.frame() |> 
-      select("Nombre" = name,
-             "Grado" = degree,
-             "Comunidad" = community) |>
-      DT::datatable(class = "cell-border stripe", 
-                    rownames = F, 
-                    filter = "top", 
-                    editable = FALSE, 
-                    extensions = "Buttons", 
-                    options = list(dom = "Bfrtip",
-                                   buttons = c("copy",
-                                               "csv",
-                                               "excel", 
-                                               "pdf", 
-                                               "print")))
-  )
+    graph_tb <- exportar() 
+    m <- as.data.frame(graph_tb) |> 
+      DT::datatable()
+    # graph <-as.data.frame(graph_tb) |>  
+    #   activate(nodes) |>
+    #   mutate(community=as.character(group_louvain())) |>
+    #   #grado
+    #   mutate(degree = centrality_degree()) |>
+    #   data.frame() |> 
+    #   select("Nombre" = name,
+    #          "Grado" = degree,
+    #          "Comunidad" = community) |>
+    #   DT::datatable(class = "cell-border stripe", 
+    #                 rownames = F, 
+    #                 filter = "top", 
+    #                 editable = FALSE, 
+    #                 extensions = "Buttons", 
+    #                 options = list(dom = "Bfrtip",
+    #                                buttons = c("copy",
+    #                                            "csv",
+    #                                            "excel", 
+    #                                            "pdf", 
+    #                                            "print")))
+  })
   
   output$download <- downloadHandler(
     
