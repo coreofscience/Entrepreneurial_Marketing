@@ -10,6 +10,7 @@ library(tidyverse)
 library(tidymodels)
 library(tidygraph)
 
+
 sidebar <- dashboardSidebar(
   sidebarMenu(
     fileInput("upload", "Choose csv", accept = c(".csv")),
@@ -62,14 +63,12 @@ server <- function(input, output) {
     
     df <- read.csv(input$upload$datapath, header = TRUE, sep = ",")
     
-    graph_tbl <-
-      df |>
-      expand(from = Source, to = Target) |>
-      filter(from != to) |>
-      ungroup() |>
-      graph_from_data_frame(directed = FALSE) |>
-      as_tbl_graph() |>
-      convert(to_simple)
+    graph_tbl <- 
+      df |> 
+      graph_from_data_frame(directed = FALSE) |> 
+      as_tbl_graph() |> 
+      convert(to_simple) |> 
+      activate(nodes)
     
     return(graph_tbl)
   })

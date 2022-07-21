@@ -32,12 +32,10 @@ info <-
 
 graph_tbl <- 
   info |> 
-  expand(from = Source, to = Target) |> 
-  filter(from != to) |> 
-  ungroup() |> 
   graph_from_data_frame(directed = FALSE) |> 
   as_tbl_graph() |> 
-  convert(to_simple)
+  convert(to_simple) |> 
+  activate(nodes)
 ```
 
 ## Vista red grafos
@@ -46,12 +44,14 @@ graph_tbl <-
 nodes <- 
   graph_tbl |> 
   activate(nodes) |>
+  mutate(id = row_number()) |>
   # modularidad
   mutate(community=as.character(group_louvain())) |>
   #grado
   mutate(degree = centrality_degree()) |>
-  data.frame() |>  
-  select(name, community, degree) 
+  data.frame() |> 
+  rename(label = name) |> 
+  select(id, label) 
 
 edges <- 
   graph_tbl |> 
