@@ -63,7 +63,6 @@ visNetwork(nodes = nodes,
            edges = edges, 
            width = "100%") |> 
   visExport() |> 
-  visEdges(arrows = "to") |>
   visLegend() |> 
   visOptions(manipulation = list(enabled = TRUE, 
                                  editEdgeCols = c("label"), 

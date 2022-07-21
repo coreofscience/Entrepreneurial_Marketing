@@ -14,11 +14,11 @@ library(igraph)
 sidebar <- dashboardSidebar(
   sidebarMenu(
     fileInput("upload", "Choose csv", accept = c(".csv")),
-    menuItem("Figura", tabName = "fig", icon = icon("table")),
+    menuItem("Social Network", tabName = "fig", icon = icon("table")),
     
-    menuItem("Tabla", icon = icon("book"), tabName = ("tabla")),
+    menuItem("Data", icon = icon("book"), tabName = ("tabla")),
     #download
-    menuItem("Descargar",icon = icon("fas fa-download"), downloadButton("download", "Download full results"))
+    menuItem("Download",icon = icon("fas fa-download"), downloadButton("download", "Download full results"))
   )
 )
 
@@ -35,7 +35,8 @@ setup <- dashboardBody(
 
 ui <- dashboardPage(
   skin = "green",
-  dashboardHeader(title = "Red social",
+  dashboardHeader(title = "Entrepreneurial Marketing",
+                  titleWidth = "270px",
                   dropdownMenu(type = "notifications", icon = shiny::icon("code"),
                                badgeStatus = "info", headerText = "Desarrolladores",
                                tags$li(a(href = "https://github.com/srobledog",
@@ -107,7 +108,6 @@ server <- function(input, output) {
                edges = grafo1$edges, 
                width = "100%")  |> 
       visExport() |> 
-      visEdges(arrows = "to") |>
       visLegend() |> 
       visOptions(manipulation = list(enabled = TRUE, 
                                      editEdgeCols = c("label"), 
