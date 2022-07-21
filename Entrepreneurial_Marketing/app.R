@@ -9,7 +9,7 @@ library(datasets)
 library(tidyverse)
 library(tidymodels)
 library(tidygraph)
-
+library(igraph)
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
@@ -77,13 +77,15 @@ server <- function(input, output) {
     nodes <- 
       graph_tbl |> 
       activate(nodes) |>
+      mutate(id = row_number()) |>
       # modularidad
       mutate(community=as.character(group_louvain())) |>
       #grado
       mutate(degree = centrality_degree()) |>
       data.frame() |> 
       mutate(community = as.numeric(community) + 16) |> 
-      select(name, community, degree) 
+      rename(label = name) |>
+      select(id, label, community, degree) 
     
     edges <- 
       graph_tbl |> 
@@ -103,15 +105,14 @@ server <- function(input, output) {
     
     visNetwork(nodes = grafo1$nodes, 
                edges = grafo1$edges, 
-               height = "500px")  |> 
+               width = "100%")  |> 
       visExport() |> 
       visEdges(arrows = "to") |>
       visLegend() |> 
       visOptions(manipulation = list(enabled = TRUE, 
                                      editEdgeCols = c("label"), 
                                      editNodeCols = c("group"), 
-                                     addNodeCols = c("id", "label"))) |> 
-      visNodes(color = grafo1$nodes$community, size = grafo1$edges$degree)
+                                     addNodeCols = c("id", "label")))
   })
   
   output$contents <-  DT::renderDataTable(server = FALSE,{

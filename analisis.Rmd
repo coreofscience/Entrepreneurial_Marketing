@@ -51,7 +51,7 @@ nodes <-
   mutate(degree = centrality_degree()) |>
   data.frame() |> 
   rename(label = name) |> 
-  select(id, label) 
+  select(id, label, community, degree) 
 
 edges <- 
   graph_tbl |> 
