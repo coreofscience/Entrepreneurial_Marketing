@@ -36,6 +36,7 @@ setup <- dashboardBody(
 ui <- dashboardPage(
   skin = "green",
   dashboardHeader(title = "Red social",
+                  h1("Titulo numero 2"),
                   dropdownMenu(type = "notifications", icon = shiny::icon("code"),
                                badgeStatus = "info", headerText = "Desarrolladores",
                                tags$li(a(href = "https://github.com/srobledog",

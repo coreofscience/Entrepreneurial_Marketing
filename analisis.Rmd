@@ -41,34 +41,49 @@ graph_tbl <-
 ## Vista red grafos
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
+colores <- c('red','green', 'black')
 nodes <- 
   graph_tbl |> 
   activate(nodes) |>
-  mutate(id = row_number()) |>
-  # modularidad
-  mutate(community=as.character(group_louvain())) |>
+  mutate(color=as.character(group_louvain())) |>
   #grado
-  mutate(degree = centrality_degree()) |>
+  mutate(value = centrality_degree(),
+         value = value *5) |> 
+  mutate(id = row_number()) |>
   data.frame() |> 
   rename(label = name) |> 
-  select(id, label) 
+  mutate(color = colores[color])
 
-edges <- 
+edges_1 <- 
   graph_tbl |> 
+  activate(nodes) |> 
   activate(edges) |> 
   data.frame() |> 
-  select(from, to)
+  rename(fortaleza = 3) |> 
+  select(from, to, fortaleza)
+
+width = c()
+for(i in edges_1$fortaleza){
+  width <- append(width, length(i))
+}
+
+width = as.data.frame(width)
+edges <- cbind(edges_1, width)|> 
+  mutate(width = width*5)
 
 visNetwork(nodes = nodes, 
            edges = edges, 
            width = "100%") |> 
   visExport() |> 
-  visEdges(arrows = "to") |>
   visLegend() |> 
-  visOptions(manipulation = list(enabled = TRUE, 
+  visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+             manipulation = list(enabled = TRUE, 
                                  editEdgeCols = c("label"), 
                                  editNodeCols = c("group"), 
-                                 addNodeCols = c("id", "label")))
+                                 addNodeCols = c("id", "label"))) |>
+  visLayout(randomSeed = 12) |> 
+  visPhysics(solver ='forceAtlas2Based', 
+             stabilization = FALSE)
 # |>
 #   for(i in nodes_u$community)
 #   {
@@ -96,7 +111,7 @@ graph_tbl|>
   #grado
   mutate(degree = centrality_degree()) |>
   data.frame() |> 
-  select("Nombre" = name,
+  select("Label" = name,
          "Grado" = degree,
          "Comunidad" = community) |>
   DT::datatable(class = "cell-border stripe", 
