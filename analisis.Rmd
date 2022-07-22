@@ -41,49 +41,58 @@ graph_tbl <-
 ## Vista red grafos
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
+colores <- rainbow(50)
 nodes <- 
   graph_tbl |> 
   activate(nodes) |>
-  mutate(id = row_number()) |>
-  # modularidad
   mutate(community=as.character(group_louvain())) |>
-  #grado
-  mutate(degree = centrality_degree()) |>
+  mutate(value = centrality_degree(),
+         value = value *5) |> 
+  mutate(id = row_number()) |>
   data.frame() |> 
   rename(label = name) |> 
-  select(id, label, community, degree) 
+  mutate(color = colores[rank(community)])
 
-edges <- 
+edges_1 <- 
   graph_tbl |> 
+  activate(nodes) |> 
   activate(edges) |> 
   data.frame() |> 
-  select(from, to)
+  rename(strength = 3) |> 
+  select(from, to, strength)
 
-visNetwork(nodes = nodes, 
+width = c()
+for(i in edges_1$strength){
+  width <- append(width, length(i))
+}
+
+width = as.data.frame(width)
+edges <- cbind(edges_1, width)|> 
+  mutate(width = width*5)
+
+net <- visNetwork(nodes = nodes, 
            edges = edges, 
            width = "100%") |> 
   visExport() |> 
   visLegend() |> 
-  visOptions(manipulation = list(enabled = TRUE, 
-                                 editEdgeCols = c("label"), 
-                                 editNodeCols = c("group"), 
-                                 addNodeCols = c("id", "label")))
-# |>
-#   for(i in nodes_u$community)
-#   {
-#     visGroups(groupname = i, color = "red")
-#   }
+  visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+             nodesIdSelection = TRUE,
+             selectedBy = "community") |>
+  visPhysics(solver ='forceAtlas2Based', 
+             stabilization = FALSE)
+net
+net |> visSave(file = "network.html", background = "white")
 
-#  visNodes(color = "red", size = nodes$degree)
+
 ```
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE}
-# importación
-# imagen <- graph_from_data_frame(d = edges,
-#                       directed = FALSE,
-#                       vertices = nodes) |>
-#   write_graph("academic_social_network_universidades.graphml",
-#               "graphml")
+importación
+imagen <- graph_from_data_frame(d = edges,
+                      directed = FALSE,
+                      vertices = nodes$id) |>
+  write_graph("academic_social_network_universidades.graphml",
+              "graphml")
 ```
 
 ## Datos tabla
@@ -95,9 +104,9 @@ graph_tbl|>
   #grado
   mutate(degree = centrality_degree()) |>
   data.frame() |> 
-  select("Nombre" = name,
-         "Grado" = degree,
-         "Comunidad" = community) |>
+  select("Label" = name,
+         "Degree" = degree,
+         "Community" = community) |>
   DT::datatable(class = "cell-border stripe", 
                 rownames = F, 
                 filter = "top", 

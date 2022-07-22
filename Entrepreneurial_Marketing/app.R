@@ -14,24 +14,36 @@ library(igraph)
 sidebar <- dashboardSidebar(
   sidebarMenu(
     fileInput("upload", "Choose csv", accept = c(".csv")),
+    
+    menuItem("Description", tabName = "description", icon = icon("table")),
+    
     menuItem("Social Network", tabName = "fig", icon = icon("table")),
     
-    menuItem("Data", icon = icon("book"), tabName = ("tabla")),
+    menuItem("Data", icon = icon("book"),
+             menuSubItem("Nodes", tabName = "nodes"),
+             menuSubItem("Edges", tabName = "edges")),
     #download
-    menuItem("Download",icon = icon("fas fa-download"), downloadButton("download", "Download full results"))
+    menuItem("Download",icon = icon("fas fa-download"), downloadButton("download", "Download Network"))
   )
 )
 
 setup <- dashboardBody(
   tabItems(
+    tabItem(tabName = "description",
+            h1("Description"))
+    ,
     tabItem(tabName = "fig",
             fluidPage(visNetworkOutput("graf"))
     ),
-    tabItem(tabName = "tabla",
-            DT::dataTableOutput("contents")
+    tabItem(tabName = "nodes",
+            DT::dataTableOutput("nodesTable")
+    ),
+    tabItem(tabName = "edges",
+            DT::dataTableOutput("edgesTable")
     )
   )
-)
+  )
+
 
 ui <- dashboardPage(
   skin = "green",
@@ -75,24 +87,34 @@ server <- function(input, output) {
   })
   
   grafos <- function(graph_tbl) {
+    colores <- rainbow(50)
     nodes <- 
       graph_tbl |> 
       activate(nodes) |>
-      mutate(id = row_number()) |>
-      # modularidad
       mutate(community=as.character(group_louvain())) |>
-      #grado
-      mutate(degree = centrality_degree()) |>
+      mutate(value = centrality_degree(),
+             value = value *5) |> 
+      mutate(id = row_number()) |>
       data.frame() |> 
-      mutate(community = as.numeric(community) + 16) |> 
-      rename(label = name) |>
-      select(id, label, community, degree) 
+      rename(label = name) |> 
+      mutate(color = colores[rank(community)])
     
-    edges <- 
+    edges_1 <- 
       graph_tbl |> 
+      activate(nodes) |> 
       activate(edges) |> 
       data.frame() |> 
-      select(from, to)
+      rename(strength = 3) |> 
+      select(from, to, strength)
+    
+    width = c()
+    for(i in edges_1$strength){
+      width <- append(width, length(i))
+    }
+    
+    width = as.data.frame(width)
+    edges <- cbind(edges_1, width)|> 
+      mutate(width = width*5)
     
     return(list(nodes=nodes, edges=edges))
   }
@@ -103,56 +125,75 @@ server <- function(input, output) {
     
     grafo1 <- grafos(graph_tb)
     
-    
     visNetwork(nodes = grafo1$nodes, 
                edges = grafo1$edges, 
-               width = "100%")  |> 
-      visExport() |> 
+               width = "100%") |>
       visLegend() |> 
-      visOptions(manipulation = list(enabled = TRUE, 
-                                     editEdgeCols = c("label"), 
-                                     editNodeCols = c("group"), 
-                                     addNodeCols = c("id", "label")))
+      visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+                 nodesIdSelection = TRUE,
+                 selectedBy = "community") |>
+      visPhysics(solver ='forceAtlas2Based', 
+                 stabilization = FALSE)
+    
   })
+  output$download <- downloadHandler(
+    filename = function() {
+      paste('network-','.html', sep='')
+    },
+    content = function(con) {
+      graph_tb <- exportar()
+      
+      grafo1 <- grafos(graph_tb)
+      
+      visNetwork(nodes = grafo1$nodes, 
+                 edges = grafo1$edges, 
+                 width = "100%") |>
+        visLegend() |> 
+        visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+                   nodesIdSelection = TRUE,
+                   selectedBy = "community") |>
+        visPhysics(solver ='forceAtlas2Based', 
+                   stabilization = FALSE) |> visSave(con)
+    }
+    
+  )
   
-  output$contents <-  DT::renderDataTable(server = FALSE,{
+  output$nodesTable <-  DT::renderDataTable(server = FALSE,{
     
     graph_tb <- exportar() 
     
-    graph <- graph_tb |>
-      activate(nodes) |>
-      mutate(community=as.character(group_louvain())) |>
-      #grado
-      mutate(degree = centrality_degree()) |>
-      data.frame() |>
-      select("Nombre" = name,
-             "Grado" = degree,
-             "Comunidad" = community) |>
+    grafo1 <- grafos(graph_tb)
+    
+    graph <- grafo1$nodes |>
+      select("ID" = id,
+             "Lable" = label, 
+             "Community" = community,
+             "Degree" = value) |> 
+      mutate(Degree = Degree/5) |> 
       DT::datatable(class = "cell-border stripe",
-                    rownames = F,
-                    filter = "top",
-                    editable = FALSE,
-                    extensions = "Buttons",
-                    options = list(dom = "Bfrtip",
-                                   buttons = c("copy",
-                                               "csv",
-                                               "excel",
-                                               "pdf",
-                                               "print")))
+                                    rownames = F,
+                                    filter = "top",
+                                    editable = FALSE,
+                                    extensions = c('Scroller','Buttons'),
+                                    options = list(dom = "Bfrtip",
+                                                   buttons = c("copy",
+                                                               "csv",
+                                                               "excel",
+                                                               "pdf",
+                                                               "print"),
+                                                   scrollY = 420,
+                                                   scroller = TRUE))
   })
   
-  output$download <- downloadHandler(
+  output$edgesTable <-  DT::renderDataTable(server = FALSE,{
     
-    graph_tb <- exportar(),
+    req(input$upload)
     
-    grafo1 <- grafos(graph_tb),
-    
-    descarga <- graph_from_data_frame(d = grafo1$edges,
-                                      directed = FALSE,
-                                      vertices = grafo1$nodes) |>
-      write_graph("academic_social_network_universidades.graphml",
-                  "graphml")
-  )
+    df <- read.csv(input$upload$datapath, header = TRUE, sep = ",") |> 
+      DT::datatable(extensions = 'Scroller',
+                    options = list(scrollY = 420,
+                                   scroller = TRUE))
+  })
   
 }
 
