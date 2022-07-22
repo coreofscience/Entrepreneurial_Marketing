@@ -9,7 +9,7 @@ library(datasets)
 library(tidyverse)
 library(tidymodels)
 library(tidygraph)
-
+library(igraph)
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
