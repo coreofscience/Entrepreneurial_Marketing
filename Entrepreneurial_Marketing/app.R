@@ -30,8 +30,23 @@ sidebar <- dashboardSidebar(
 setup <- dashboardBody(
   tabItems(
     tabItem(tabName = "description",
-            h1("Description"))
-    ,
+            HTML("<body>
+                  <h1>Entrenepenurial Marketing definition</h1>
+                  <br>
+                  <h4>
+                  <b>Entrepreneurial Marketing</b> is “a combination of innovative, proactive, 
+                  and risk-taking activities that create, 
+                  communicate, and deliver value to and by customers, entrepreneurs, marketers, their 
+                  partners, and society at large” <i>(Whalen et al. 2016)</i>.
+                  </h4>
+                  <br>
+                  <h4>
+                  <b>Entrepreneurial Networking</b> is defined as “what entrepreneurs do in creating and 
+                  shaping network ties and may, therefore, include tie formation and maintenance 
+                  behaviors as well as any assemblage of such behaviors into unique networking styles, 
+                  strategies or processes” <i>(Bensaou et al. 2014)</i>.
+                  </h4>
+                </body>")),
     tabItem(tabName = "fig",
             fluidPage(visNetworkOutput("graf"))
     ),
@@ -129,6 +144,7 @@ server <- function(input, output) {
                edges = grafo1$edges, 
                width = "100%") |>
       visLegend() |> 
+      visExport() |>
       visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
                  nodesIdSelection = TRUE,
                  selectedBy = "community") |>
