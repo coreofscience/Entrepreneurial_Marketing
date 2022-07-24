@@ -48,7 +48,7 @@ setup <- dashboardBody(
                   </h4>
                 </body>")),
     tabItem(tabName = "fig",
-            fluidPage(visNetworkOutput("graf"))
+            fluidPage(br(),h3(textOutput("carga")),visNetworkOutput("graf"))
     ),
     tabItem(tabName = "nodes",
             DT::dataTableOutput("nodesTable")
@@ -99,6 +99,16 @@ server <- function(input, output) {
       activate(nodes)
     
     return(graph_tbl)
+  })
+  
+  getstatus <- reactive(
+    if(is.null(input$upload)){
+      "Por favor Importar archivo para visualizar la información"
+    }
+  )
+  
+  output$carga <- renderText({
+    getstatus()
   })
   
   grafos <- function(graph_tbl) {
@@ -206,8 +216,18 @@ server <- function(input, output) {
     req(input$upload)
     
     df <- read.csv(input$upload$datapath, header = TRUE, sep = ",") |> 
-      DT::datatable(extensions = 'Scroller',
-                    options = list(scrollY = 420,
+      DT::datatable(class = "cell-border stripe",
+                    rownames = F,
+                    filter = "top",
+                    editable = FALSE,
+                    extensions = c('Scroller','Buttons'),
+                    options = list(dom = "Bfrtip",
+                                   buttons = c("copy",
+                                               "csv",
+                                               "excel",
+                                               "pdf",
+                                               "print"),
+                                   scrollY = 420,
                                    scroller = TRUE))
   })
   
