@@ -48,7 +48,7 @@ setup <- dashboardBody(
                   </h4>
                 </body>")),
     tabItem(tabName = "fig",
-            fluidPage(br(),h3(textOutput("carga")),visNetworkOutput("graf"))
+            fluidPage(br(),h3(textOutput("carga")),visNetworkOutput("graf", width = "100%", height = "500px"))
     ),
     tabItem(tabName = "nodes",
             DT::dataTableOutput("nodesTable")
@@ -103,7 +103,7 @@ server <- function(input, output) {
   
   getstatus <- reactive(
     if(is.null(input$upload)){
-      "Por favor Importar archivo para visualizar la información"
+      "Please import file to view the information"
     }
   )
   
@@ -112,17 +112,17 @@ server <- function(input, output) {
   })
   
   grafos <- function(graph_tbl) {
-    colores <- rainbow(50)
+    colores <- c(palette("R3"),palette("Dark2"),palette("alphabet"))
     nodes <- 
       graph_tbl |> 
       activate(nodes) |>
-      mutate(community=as.character(group_louvain())) |>
+      mutate(community=as.numeric(group_louvain())) |>
       mutate(value = centrality_degree(),
              value = value *5) |> 
       mutate(id = row_number()) |>
       data.frame() |> 
       rename(label = name) |> 
-      mutate(color = colores[rank(community)])
+      mutate(color = colores[community])
     
     edges_1 <- 
       graph_tbl |> 
@@ -192,7 +192,7 @@ server <- function(input, output) {
     
     graph <- grafo1$nodes |>
       select("ID" = id,
-             "Lable" = label, 
+             "Label" = label, 
              "Community" = community,
              "Degree" = value) |> 
       mutate(Degree = Degree/5) |> 
